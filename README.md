@@ -1,92 +1,166 @@
 # dsh-computer-use-windows
 
-DeepSeek Harness 的 Computer Use 插件，基于 [上游 dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use) 修改，重点修复当前 DSH 在 Windows 上的宿主依赖单实例、UIA 识别、窗口定向输入和坐标问题。自动化引擎使用 [cua-driver](https://github.com/trycua/cua)。
+[English](./README_EN.md)
 
-> **适用平台：Windows。** 本仓库按 Windows 版本维护，不声明支持 macOS 或 Linux。当前实际验证环境为 Windows 11。
+适用于 **Windows** 的 DeepSeek Harness Computer Use 插件。项目基于 [988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)，使用 [cua-driver](https://github.com/trycua/cua) 提供 UI Automation、独立 Agent 光标和窗口操作，并可选使用智谱 GLM 进行截图视觉识别。
 
-## 实际测试环境
+## 环境要求
 
-- Windows 11，系统版本 10.0.22000.2538，x86_64
-- Node.js 24.14.0
-- DeepSeek Harness / @deepseek-ai/dsh-tools 0.1.0-rc.7
-- cua-driver 0.21.0
-- 单显示器 1920×1080；驱动报告缩放 1.0
-- DSH Web GUI，Profile：web
+- Windows 11（当前实测系统：10.0.22000.2538，x86_64）
+- DeepSeek Harness Web Profile
+- Node.js 24.14.0（当前实测版本）
+- cua-driver 0.21.0（当前实测版本）
 
-Windows 内尚未测试：125%/150% DPI、多显示器、负坐标显示器、管理员权限窗口。
+本仓库仅适用于 Windows。
 
-## 工具
+## 功能
 
 | 工具 | 功能 |
 |---|---|
-| screen_observe | Windows UIA/AX 编号树；可选智谱截图视觉 |
-| computer_click / computer_double_click / computer_right_click | 按观察编号或坐标操作 |
-| computer_type | 向最近观察的精确窗口输入文本 |
-| computer_key | 向最近观察的精确窗口发送按键 |
-| computer_scroll | 滚动 |
-| computer_drag | 拖拽 |
-| computer_wait | 等待 |
-| app_list / app_launch | 列出或启动应用 |
+| `screen_observe` | 读取 Windows UIA 控件树和坐标；可选截图视觉识别 |
+| `computer_click` | 单击编号元素或窗口坐标 |
+| `computer_double_click` | 双击 |
+| `computer_right_click` | 右键 |
+| `computer_type` | 向最近观察的窗口输入文本 |
+| `computer_key` | 发送按键或快捷键 |
+| `computer_scroll` | 滚动 |
+| `computer_drag` | 拖拽 |
+| `computer_wait` | 等待界面变化 |
+| `app_list` | 列出运行中的应用 |
+| `app_launch` | 启动应用 |
 
-## 本仓库的修复
+## 安装
 
-- 将 @deepseek-ai/dsh-tools 改为 peer dependency，避免 Profile 安装第二份模块后触发 undefined.prepare。
-- 增加插件与宿主模块解析一致性检查。
-- 探测本机实际 Windows cua-driver 安装路径。
-- 移除 Windows 上错误的固定 Retina 2 倍坐标缩放。
-- 排除 Cua.AgentCursorOverlay 覆盖层，避免默认观察到自身光标窗口。
-- 增加 Windows UIA 控件角色和密码控件识别。
-- 输入和按键要求未过期快照，并绑定最近观察的 pid 与 window_id。
-- 指定窗口不存在时明确失败，不再静默操作其他窗口。
-- 观察与动作使用同一个 cua-driver session。
+### 1. 安装并启动 cua-driver
 
-## 已完成的真实操作验证
+按照 [cua-driver 官方说明](https://github.com/trycua/cua) 安装。确认命令可用：
 
-### Windows 记事本
+~~~powershell
+cua-driver --version
+cua-driver doctor --json
+~~~
 
-启动记事本，UIA 找到“文本编辑器”，按元素编号点击，输入 DSH computer-use verified，再观察确认窗口标题与 UIA 文本均包含该内容。
+如果程序不在 PATH，可设置：
 
-### Windows 计算器
+~~~powershell
+$env:CUA_DRIVER_BIN = "C:\path\to\cua-driver.exe"
+~~~
 
-启动计算器，UIA 识别数字按钮，依次点击 1、5、6、9、8，再观察确认显示为 15,698。
+插件也会探测当前 Windows 安装器常用路径：
 
-### 智谱视觉
+~~~text
+%LOCALAPPDATA%\Programs\Cua\cua-driver\bin\cua-driver.exe
+~~~
 
-配置 Key 后，screen_observe(mode=vision) 已在计算器窗口真实返回截图视觉描述。视觉曾误识别部分按钮文字和坐标，因此应优先使用 UIA；视觉只用于 Canvas、图片或无障碍树不足的场景，并在操作后重新观察验证。
+启动守护进程：
 
-## 安全边界
+~~~powershell
+cua-driver serve --socket "\.\pipe\cua-driver"
+~~~
 
-- 快照默认 15 秒过期，过期后动作拒绝。
-- 无快照时点击、输入和按键拒绝。
-- allowedApps 可限制可操作应用。
-- 元素标签命中删除、支付、转账、退出登录等危险词时请求 DSH 审批；审批不可用时失败关闭。
-- 已识别的密码控件拒绝自动输入。
-- 危险词和密码保护依赖 UIA 元素语义；坐标模式无法预知目标。
-- computer_key 不分析快捷键自身的危险性。不要授予不可信模型不必要的权限。
+### 2. 加入 DSH Web Profile
 
-## 当前验证过的安装形态
+将仓库克隆到本地：
 
-本机使用 Windows Profile 本地链接，并让插件 peer 解析到 DSH 宿主的唯一模块实例。安装后运行：
+~~~powershell
+git clone https://github.com/chowhang/dsh-computer-use-windows.git
+cd dsh-computer-use-windows
+~~~
+
+把插件链接到 Web Profile，并在 Profile 的 `package.json` 中加入：
+
+~~~json
+{
+  "dependencies": {
+    "dsh-computer-use": "link:C:/你的路径/dsh-computer-use-windows"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": ["dsh-computer-use"]
+    }
+  }
+}
+~~~
+
+不要在 Profile 中单独安装 `@deepseek-ai/dsh-tools`。插件必须使用 DSH 宿主的同一模块实例，否则工具可能因调度器身份不同出现 `undefined.prepare`。
+
+安装后验证：
 
 ~~~powershell
 $env:DSH_PROFILE_ROOT = "$HOME/.dsh/profiles/web"
 node tools/verify-host-modules.mjs
 ~~~
 
-预期 pluginPath 与 hostPath 完全相同，并且 Profile 中不存在独立安装的 @deepseek-ai/dsh-tools。
+输出中的 `pluginPath` 和 `hostPath` 必须相同。然后重启现有的 `dsh web` 宿主。
 
-上游 install.sh 未用于本次 Windows 安装验证。本仓库仅维护 Windows 用法；该 Shell 脚本作为上游遗留文件保留，不作为推荐安装方式。
+## 使用
 
-## 视觉配置（可选）
+先观察，再操作：
+
+~~~text
+screen_observe(window="计算器", mode="ax")
+computer_click(element=26)
+~~~
+
+- `window` 可传窗口标题子串或 PID。
+- 编号来自最近一次 `screen_observe`。
+- 快照默认约 15 秒有效；过期后需要重新观察。
+- 原生 Windows 应用优先使用 `mode="ax"`。
+- Canvas、图片或 UIA 信息不足时使用 `mode="vision"`。
+
+## 智谱视觉（可选）
+
+申请智谱 API Key 后，通过环境变量配置：
 
 ~~~powershell
 $env:ZHIPU_API_KEY = "你的 Key"
-# 或保存到 $HOME/.zhipu-key，只含一行 Key，并限制文件权限
 ~~~
 
-Key 不得提交到仓库。当前实现调用智谱 GLM 视觉后端，不会自动使用当前聊天模型的原生视觉能力。
+也可以把 Key 单独保存到：
 
-## 测试
+~~~text
+%USERPROFILE%\.zhipu-key
+~~~
+
+文件只放一行 Key，并限制为当前用户可读。不要将 Key 写入仓库。
+
+调用：
+
+~~~text
+screen_observe(window="目标窗口", mode="vision")
+~~~
+
+当前视觉实现调用智谱 GLM，不会自动调用聊天模型自身的视觉能力。视觉结果可能存在文字或坐标误识别，操作后应重新观察确认。
+
+## 配置
+
+`cordis.patch.yml` 默认配置：
+
+~~~yaml
+- insert:
+    - id: dsh-computer-use
+      name: dsh-computer-use
+      config:
+        ttlMs: 15000
+        maxElements: 500
+~~~
+
+可配置：
+
+~~~yaml
+config:
+  ttlMs: 15000
+  maxElements: 500
+  allowedApps: []
+  cursorTheme: com.dsh.computeruse.rainbow
+~~~
+
+- `allowedApps`：允许操作的应用白名单；空数组表示不限制。
+- `cursorTheme`：cua-driver 中已安装的 Agent 光标主题 ID；主题不存在时使用驱动默认光标。
+
+仓库包含上游的 `theme.lottie` 和 `tools/make_theme.py`。光标主题的编译与安装方式以 cua-driver 官方文档为准。
+
+## 开发
 
 ~~~powershell
 node --check index.js
@@ -96,18 +170,8 @@ $env:DSH_PROFILE_ROOT = "$HOME/.dsh/profiles/web"
 node tools/verify-host-modules.mjs
 ~~~
 
-当前自动化测试共 4 个，全部通过，覆盖快照缺失/过期、token 解析、Windows 1×坐标和危险标签检测。这不代表所有 Windows GUI、DPI 或显示器组合都已覆盖。
-
-## 已知问题
-
-- cua-driver health_report 在本机曾报告 UI Automation provider 超时和降级；具体窗口的 UIA 调用仍可成功。
-- app_launch(name=Calculator) 在本机失败；app_launch(bundle_id=calc.exe) 成功。
-- Windows 计算器由 ApplicationFrameHost.exe 承载，启动 PID 与实际观察窗口 PID 可能不同。
-- 视觉输出可能误识别按钮文字或坐标。
-- 本仓库仅适用于 Windows。
-
 ## 来源与许可
 
-- 上游：[988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)
-- 本仓库：[chowhang/dsh-computer-use-windows](https://github.com/chowhang/dsh-computer-use-windows)
-- License：MIT，保留上游许可证。
+- 上游项目：[988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)
+- Windows 版本：[chowhang/dsh-computer-use-windows](https://github.com/chowhang/dsh-computer-use-windows)
+- License：MIT
