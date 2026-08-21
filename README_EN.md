@@ -61,7 +61,7 @@ cua-driver serve --socket "\.\pipe\cua-driver"
 ### 2. Add the plugin to the DSH Web profile
 
 ~~~powershell
-git clone https://github.com/chowhang/dsh-computer-use-windows.git
+git clone https://github.com/qphotoai/dsh-computer-use-windows.git
 cd dsh-computer-use-windows
 ~~~
 
@@ -171,5 +171,5 @@ node tools/verify-host-modules.mjs
 ## Attribution and License
 
 - Upstream: [988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)
-- Windows fork: [chowhang/dsh-computer-use-windows](https://github.com/chowhang/dsh-computer-use-windows)
+- Windows fork: [qphotoai/dsh-computer-use-windows](https://github.com/qphotoai/dsh-computer-use-windows)
 - License: MIT

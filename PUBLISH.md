@@ -2,7 +2,7 @@
 
 ## 当前仓库
 
-- GitHub：https://github.com/chowhang/dsh-computer-use-windows
+- GitHub：https://github.com/qphotoai/dsh-computer-use-windows
 - 首次推送提交：4f0175a
 - License：MIT
 - 定位：基于上游项目的 Windows 实测派生版本

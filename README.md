@@ -63,7 +63,7 @@ cua-driver serve --socket "\.\pipe\cua-driver"
 将仓库克隆到本地：
 
 ~~~powershell
-git clone https://github.com/chowhang/dsh-computer-use-windows.git
+git clone https://github.com/qphotoai/dsh-computer-use-windows.git
 cd dsh-computer-use-windows
 ~~~
 
@@ -173,5 +173,5 @@ node tools/verify-host-modules.mjs
 ## 来源与许可
 
 - 上游项目：[988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)
-- Windows 版本：[chowhang/dsh-computer-use-windows](https://github.com/chowhang/dsh-computer-use-windows)
+- Windows 版本：[qphotoai/dsh-computer-use-windows](https://github.com/qphotoai/dsh-computer-use-windows)
 - License：MIT
