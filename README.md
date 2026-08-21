@@ -1,116 +1,113 @@
-# dsh-computer-use
+# dsh-computer-use-windows
 
-> DeepSeek Harness 的 Computer Use 插件 —— 给 harness-desktop 增加"**虚拟鼠标真人操作**"能力：
-> AI 生成独立光标，像人一样看屏幕、移动、点击、输入，替用户操作电脑。
+DeepSeek Harness 的 Computer Use 插件，基于 [上游 dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use) 修改，重点修复当前 DSH 在 Windows 上的宿主依赖单实例、UIA 识别、窗口定向输入和坐标问题。自动化引擎使用 [cua-driver](https://github.com/trycua/cua)。
 
-跨平台（macOS / Windows / Linux），引擎基于 [cua-driver](https://github.com/trycua/cua)（MIT 开源，MCP 标准接口）。
+> **适用平台：Windows。** 本仓库按 Windows 版本维护，不声明支持 macOS 或 Linux。当前实际验证环境为 Windows 11。
 
-## ✨ 能力
+## 实际测试环境
+
+- Windows 11，系统版本 10.0.22000.2538，x86_64
+- Node.js 24.14.0
+- DeepSeek Harness / @deepseek-ai/dsh-tools 0.1.0-rc.7
+- cua-driver 0.21.0
+- 单显示器 1920×1080；驱动报告缩放 1.0
+- DSH Web GUI，Profile：web
+
+Windows 内尚未测试：125%/150% DPI、多显示器、负坐标显示器、管理员权限窗口。
+
+## 工具
 
 | 工具 | 功能 |
-|------|------|
-| `screen_observe` | 看屏幕：AX 编号树 + 坐标（零视觉 token 成本）；AX 树为空自动降级视觉 |
-| `computer_click` / `computer_double_click` / `computer_right_click` | **真人操作**：独立光标滑行到目标 + 像素级真实点击（看得见过程） |
-| `computer_type` | 文本输入（密码框自动拒绝） |
-| `computer_key` | 按键 / 快捷键（return、cmd+c…；聊天窗口回车发送） |
-| `computer_scroll` | 滚动 |
-| `computer_drag` | 拖拽 |
-| `computer_wait` | 等待 |
-| `app_list` / `app_launch` | 列出 / 启动应用 |
+|---|---|
+| screen_observe | Windows UIA/AX 编号树；可选智谱截图视觉 |
+| computer_click / computer_double_click / computer_right_click | 按观察编号或坐标操作 |
+| computer_type | 向最近观察的精确窗口输入文本 |
+| computer_key | 向最近观察的精确窗口发送按键 |
+| computer_scroll | 滚动 |
+| computer_drag | 拖拽 |
+| computer_wait | 等待 |
+| app_list / app_launch | 列出或启动应用 |
 
-**核心设计**：AX 树只用于"看"（定位元素坐标），所有操作走**像素级虚拟光标**——光标滑行动画 + 真实点击，模拟真人操作。内置**彩虹渐变动态光标**主题（可自定义）。
+## 本仓库的修复
 
-## 🛡 安全设计
+- 将 @deepseek-ai/dsh-tools 改为 peer dependency，避免 Profile 安装第二份模块后触发 undefined.prepare。
+- 增加插件与宿主模块解析一致性检查。
+- 探测本机实际 Windows cua-driver 安装路径。
+- 移除 Windows 上错误的固定 Retina 2 倍坐标缩放。
+- 排除 Cua.AgentCursorOverlay 覆盖层，避免默认观察到自身光标窗口。
+- 增加 Windows UIA 控件角色和密码控件识别。
+- 输入和按键要求未过期快照，并绑定最近观察的 pid 与 window_id。
+- 指定窗口不存在时明确失败，不再静默操作其他窗口。
+- 观察与动作使用同一个 cua-driver session。
 
-1. **虚拟光标隔离**：操作走 cua-driver 的独立 Agent 光标，不抢真实鼠标
-2. **观察快照 TTL**：快照约 15 秒过期，过期后动作被拒绝，必须重新观察（引擎侧 element_token 双重校验）
-3. **区域限制**：可选 `allowedApps` 白名单，名单外的应用操作一律拒绝（fail closed）
-4. **危险操作审批**：目标标签命中"删除/支付/转账/退出登录…"危险词时，经 dsh 审批服务征询用户，未批准不放行
-5. **敏感输入保护**：密码框（AXSecureTextField）拒绝自动输入——密码/密钥永不让模型接触
-6. **无快照拒绝**：任何动作必须先 `screen_observe`，杜绝盲操作
+## 已完成的真实操作验证
 
-> ⚠️ **作用范围说明**：危险词审批与密码框保护基于观察到的**元素标签**，仅对 `element` 编号模式生效；`x/y` 坐标模式与无目标输入（`computer_type` / `computer_key` 落到前台应用）无法预知目标内容，由快照 TTL 与"操作可见"兜底。`computer_key` 不校验快捷键本身（如 cmd+q 等系统快捷键），请勿授予不可信模型。这是设计取舍：安全优先级 = 元素语义 > 坐标盲操作，但坐标模式保留了真人可视操作的自由度。
+### Windows 记事本
 
-## 📦 安装
+启动记事本，UIA 找到“文本编辑器”，按元素编号点击，输入 DSH computer-use verified，再观察确认窗口标题与 UIA 文本均包含该内容。
 
-前提：
-- harness-desktop（含 dsh rc 运行时）
-- cua-driver 已安装（官方安装见 [trycua/cua](https://github.com/trycua/cua)）且权限已授权（macOS：Accessibility + Screen Recording；Windows：普通用户权限运行）
-- 插件默认从 PATH 查找 `cua-driver`；若二进制不在 PATH，设 `CUA_DRIVER_BIN=/path/to/cua-driver`（Windows 常用）
+### Windows 计算器
 
-```bash
-# 一键安装（home 级用户 patch 层注入，不修改任何 profile 配置）
-./install.sh            # 预演: ./install.sh --dry-run
-# 卸载
-./uninstall.sh
-# 安装后重启 harness-desktop 生效
-```
+启动计算器，UIA 识别数字按钮，依次点击 1、5、6、9、8，再观察确认显示为 15,698。
 
-> **Windows / Linux**：`install.sh` 的默认 `DSH_HOME` 是 macOS 路径。Windows（Git Bash / WSL）与 Linux 用户请先 `export DSH_HOME=<你的 dsh home 目录>` 再运行脚本；或手动两步（见下），两步与平台无关。
+### 智谱视觉
 
-脚本做的事（也可手动）：
-1. `ln -sfn <插件目录> "$DSH_HOME/profiles/web/node_modules/dsh-computer-use"`
-2. 在 `$DSH_HOME/cordis.patch.yml`（dsh 的机器级用户 patch 层）insert 插件注册
+配置 Key 后，screen_observe(mode=vision) 已在计算器窗口真实返回截图视觉描述。视觉曾误识别部分按钮文字和坐标，因此应优先使用 UIA；视觉只用于 Canvas、图片或无障碍树不足的场景，并在操作后重新观察验证。
 
-可选配置（`$DSH_HOME/cordis.patch.yml` 中覆盖）：
+## 安全边界
 
-```yaml
-- id: dsh-computer-use
-  config:
-    ttlMs: 15000        # 快照有效期（毫秒）
-    maxElements: 500    # screen_observe 最大编号元素数
-    allowedApps: []     # 区域限制白名单（空 = 不限制）
-    cursorTheme: com.dsh.computeruse.rainbow  # 虚拟光标主题（空 = 引擎默认）
-```
+- 快照默认 15 秒过期，过期后动作拒绝。
+- 无快照时点击、输入和按键拒绝。
+- allowedApps 可限制可操作应用。
+- 元素标签命中删除、支付、转账、退出登录等危险词时请求 DSH 审批；审批不可用时失败关闭。
+- 已识别的密码控件拒绝自动输入。
+- 危险词和密码保护依赖 UIA 元素语义；坐标模式无法预知目标。
+- computer_key 不分析快捷键自身的危险性。不要授予不可信模型不必要的权限。
 
-## 👁 视觉兜底（可选）
+## 当前验证过的安装形态
 
-游戏 / Canvas 等无 AX 树的界面，可启用视觉模式（默认不启用，零成本）：
+本机使用 Windows Profile 本地链接，并让插件 peer 解析到 DSH 宿主的唯一模块实例。安装后运行：
 
-```bash
-# 智谱开放平台免费申请 key：https://open.bigmodel.cn
-export ZHIPU_API_KEY=你的key
-```
+~~~powershell
+$env:DSH_PROFILE_ROOT = "$HOME/.dsh/profiles/web"
+node tools/verify-host-modules.mjs
+~~~
 
-设置后 `screen_observe` 在 AX 树为空时自动降级为视觉理解（glm-4.6v-flash 免费模型，限流自动回退 glm-4v-flash / glm-4.1v-thinking-flash）；不设置则 AX 树正常返回、视觉部分给出提示，不影响主体功能。
+预期 pluginPath 与 hostPath 完全相同，并且 Profile 中不存在独立安装的 @deepseek-ai/dsh-tools。
 
-## 🎨 光标主题（可选）
+上游 install.sh 未用于本次 Windows 安装验证。本仓库仅维护 Windows 用法；该 Shell 脚本作为上游遗留文件保留，不作为推荐安装方式。
 
-内置**彩虹渐变指针**主题（`com.dsh.computeruse.rainbow`，128×128，12 个动作动画，颜色流动），产物 `theme.lottie` 已随仓库附带。
-- 插件启动自动应用（配置 `cursorTheme`，空 = 引擎默认；**未安装该主题时自动回退引擎默认光标**，不影响功能）
-- 安装主题：需经 cua-driver 的 cursor-theme 编译器安装 `theme.lottie`（编译器随引擎提供，命令见 [trycua/cua](https://github.com/trycua/cua) 文档）
-- 自定义：`python3 tools/make_theme.py --output theme.lottie`（改颜色/形状）→ 按上述方式安装
+## 视觉配置（可选）
 
-## ⚠️ 已知局限
+~~~powershell
+$env:ZHIPU_API_KEY = "你的 Key"
+# 或保存到 $HOME/.zhipu-key，只含一行 Key，并限制文件权限
+~~~
 
-- **Windows / Linux 待真机实测**（引擎官方支持，指南见 `WINDOWS_TEST.md`）
-- **像素坐标校准为近似**（截图↔屏幕换算用固定比例，首次使用若点击偏移可用 `screen_observe` 视觉模式或引擎 `get_desktop_state` 截图对比校准）
-- **视觉读屏精度一般**（GLM 对小字体读数不稳，显示屏/细字场景建议配合 AX 或放大 zoom）
-- macOS 计算器等窗口显示屏不在 AX 树（需视觉读取）
+Key 不得提交到仓库。当前实现调用智谱 GLM 视觉后端，不会自动使用当前聊天模型的原生视觉能力。
 
-## 🧪 开发与验证
+## 测试
 
-项目采用"隔离 profile"开发（不动真实 GUI 配置）：
+~~~powershell
+node --check index.js
+Get-ChildItem lib -Filter *.js | ForEach-Object { node --check $_.FullName }
+node --test test/*.test.js
+$env:DSH_PROFILE_ROOT = "$HOME/.dsh/profiles/web"
+node tools/verify-host-modules.mjs
+~~~
 
-```bash
-# 用隔离 DSH_HOME 起 headless 会话验证
-DSH_HOME=$PWD/.dsh-p0 ELECTRON_RUN_AS_NODE=1 \
-  /Applications/harness-desktop.app/Contents/MacOS/harness-desktop --expose-internals \
-  /Applications/harness-desktop.app/Contents/Resources/app/node_modules/@deepseek-ai/dsh/lib/bin.js \
-  --profile test "请调用 screen_observe 观察当前窗口并报告"
-```
+当前自动化测试共 4 个，全部通过，覆盖快照缺失/过期、token 解析、Windows 1×坐标和危险标签检测。这不代表所有 Windows GUI、DPI 或显示器组合都已覆盖。
 
-## 📄 License
+## 已知问题
 
-MIT
+- cua-driver health_report 在本机曾报告 UI Automation provider 超时和降级；具体窗口的 UIA 调用仍可成功。
+- app_launch(name=Calculator) 在本机失败；app_launch(bundle_id=calc.exe) 成功。
+- Windows 计算器由 ApplicationFrameHost.exe 承载，启动 PID 与实际观察窗口 PID 可能不同。
+- 视觉输出可能误识别按钮文字或坐标。
+- 本仓库仅适用于 Windows。
 
----
+## 来源与许可
 
-## 🌐 相关链接
-
-- GitHub：https://github.com/988hj7tczd-oss/dsh-computer-use
-- Gitee 镜像（国内加速）：https://gitee.com/jerryweizhihao/dsh-computer-use
-- npm：https://www.npmjs.com/package/dsh-computer-use
-- AI House 独立站（AI 工具排行榜）：https://www.aibunkhouse.com/
-- harness-desktop（DeepSeek Harness 桌面端）：https://github.com/988hj7tczd-oss/harness-desktop
-- awesome-dsh-plugin（DeepSeek Harness 插件精选列表）：https://github.com/988hj7tczd-oss/awesome-dsh-plugin
+- 上游：[988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)
+- 本仓库：[chowhang/dsh-computer-use-windows](https://github.com/chowhang/dsh-computer-use-windows)
+- License：MIT，保留上游许可证。

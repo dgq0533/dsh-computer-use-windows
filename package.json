@@ -1,7 +1,7 @@
 {
   "name": "dsh-computer-use",
   "version": "0.1.0",
-  "description": "Computer Use 插件：虚拟鼠标真人操作（screen_observe + computer_click 等 11 个模型友好工具，跨平台 cua-driver 引擎）",
+  "description": "适用于 Windows 的 DeepSeek Harness Computer Use 插件（UIA + cua-driver + 可选 GLM 视觉）",
   "type": "module",
   "main": "index.js",
   "license": "MIT",
