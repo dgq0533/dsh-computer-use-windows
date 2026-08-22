@@ -2,7 +2,8 @@
 param(
   [string]$ProfileRoot = (Join-Path $HOME '.dsh\profiles\web'),
   [string]$DshRoot,
-  [switch]$SkipRestartNotice
+  [switch]$SkipRestartNotice,
+  [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,7 +33,13 @@ Set-Junction (Join-Path $PluginRoot 'node_modules\@deepseek-ai\dsh-tools') $Host
 Set-Junction (Join-Path $PluginRoot 'node_modules\@deepseek-ai\schemastery') $Schema
 
 $PackagePath = Join-Path $ProfileRoot 'package.json'
+$BackupPath = "$PackagePath.dsh-computer-use.bak"
 $Profile = Get-Content -Raw $PackagePath | ConvertFrom-Json
+if ($DryRun) {
+  [pscustomobject]@{ dryRun = $true; profileRoot = $ProfileRoot; pluginRoot = $PluginRoot; hostTools = $HostTools; schema = $Schema; packagePath = $PackagePath } | ConvertTo-Json
+  return
+}
+Copy-Item -LiteralPath $PackagePath -Destination $BackupPath -Force
 if (-not $Profile.dependencies) { $Profile | Add-Member -NotePropertyName dependencies -NotePropertyValue ([pscustomobject]@{}) }
 $LinkValue = 'link:' + ($PluginRoot -replace '\', '/')
 $Profile.dependencies | Add-Member -Force -NotePropertyName 'dsh-computer-use' -NotePropertyValue $LinkValue
@@ -40,7 +47,12 @@ if (-not $Profile.dsh) { $Profile | Add-Member -NotePropertyName dsh -NoteProper
 if (-not $Profile.dsh.profile) { $Profile.dsh | Add-Member -NotePropertyName profile -NotePropertyValue ([pscustomobject]@{}) }
 $Bundles = @($Profile.dsh.profile.bundles)
 if ($Bundles -notcontains 'dsh-computer-use') { $Profile.dsh.profile | Add-Member -Force -NotePropertyName bundles -NotePropertyValue @($Bundles + 'dsh-computer-use') }
-$Profile | ConvertTo-Json -Depth 16 | Set-Content -Encoding utf8 $PackagePath
+try {
+  $Profile | ConvertTo-Json -Depth 16 | Set-Content -Encoding utf8 $PackagePath
+} catch {
+  Copy-Item -LiteralPath $BackupPath -Destination $PackagePath -Force
+  throw
+}
 
 $env:DSH_PROFILE_ROOT = $ProfileRoot
 & node (Join-Path $PluginRoot 'tools\verify-host-modules.mjs')

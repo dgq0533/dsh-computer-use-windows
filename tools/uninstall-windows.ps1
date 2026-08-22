@@ -4,7 +4,9 @@ param([string]$ProfileRoot = (Join-Path $HOME '.dsh\profiles\web'))
 $ErrorActionPreference = 'Stop'
 $ProfileRoot = (Resolve-Path $ProfileRoot).Path
 $PackagePath = Join-Path $ProfileRoot 'package.json'
+$BackupPath = "$PackagePath.dsh-computer-use.bak"
 $Profile = Get-Content -Raw $PackagePath | ConvertFrom-Json
+Copy-Item -LiteralPath $PackagePath -Destination $BackupPath -Force
 if ($Profile.dependencies) { $Profile.dependencies.PSObject.Properties.Remove('dsh-computer-use') }
 if ($Profile.dsh -and $Profile.dsh.profile -and $Profile.dsh.profile.bundles) {
   $Profile.dsh.profile.bundles = @($Profile.dsh.profile.bundles | Where-Object { $_ -ne 'dsh-computer-use' })
