@@ -60,7 +60,15 @@ cua-driver serve --socket "\.\pipe\cua-driver"
 
 ### 2. 加入 DSH Web Profile
 
-将仓库克隆到本地：
+仓库提供 Windows 原生安装脚本（推荐）：
+
+~~~powershell
+.\tools\install-windows.ps1
+~~~
+
+脚本会将插件链接到 Web Profile、写入 Profile 的 package.json，并验证 dsh-tools 只解析到 DSH 宿主的同一实例。完成后重启现有的 dsh web 宿主。
+
+也可以手动接入。先将仓库克隆到本地：
 
 ~~~powershell
 git clone https://github.com/qphotoai/dsh-computer-use-windows.git
@@ -92,6 +100,12 @@ node tools/verify-host-modules.mjs
 ~~~
 
 输出中的 `pluginPath` 和 `hostPath` 必须相同。然后重启现有的 `dsh web` 宿主。
+
+卸载：
+
+~~~powershell
+.\tools\uninstall-windows.ps1
+~~~
 
 ## 使用
 

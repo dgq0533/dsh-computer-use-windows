@@ -1,6 +1,6 @@
 {
   "name": "dsh-computer-use",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "适用于 Windows 的 DeepSeek Harness Computer Use 插件（UIA + cua-driver + 可选 GLM 视觉）",
   "type": "module",
   "main": "index.js",
@@ -22,7 +22,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "check": "node --check index.js && node --check lib/*.js",
+    "check": "node tools/check-syntax.mjs",
     "test": "node --test test/*.test.js",
     "verify:host": "node tools/verify-host-modules.mjs"
   },

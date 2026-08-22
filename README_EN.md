@@ -60,6 +60,16 @@ cua-driver serve --socket "\.\pipe\cua-driver"
 
 ### 2. Add the plugin to the DSH Web profile
 
+Use the included native Windows installer (recommended):
+
+~~~powershell
+.\tools\install-windows.ps1
+~~~
+
+It links the plugin into the Web profile, updates the profile package.json, and verifies that dsh-tools resolves to one host-owned instance. Restart the existing dsh web host afterward.
+
+Manual setup is also available. Clone the repository:
+
 ~~~powershell
 git clone https://github.com/qphotoai/dsh-computer-use-windows.git
 cd dsh-computer-use-windows
@@ -90,6 +100,12 @@ node tools/verify-host-modules.mjs
 ~~~
 
 `pluginPath` and `hostPath` must be identical. Restart the existing `dsh web` host afterward.
+
+Uninstall:
+
+~~~powershell
+.\tools\uninstall-windows.ps1
+~~~
 
 ## Usage
 
