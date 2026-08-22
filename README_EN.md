@@ -1,6 +1,6 @@
 # dsh-computer-use-windows
 
-[中文](./README.md)
+[English](./README_EN.md) | [中文](./README.md)
 
 A **Windows-only** Computer Use plugin for DeepSeek Harness. It is based on [988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use) and uses [cua-driver](https://github.com/trycua/cua) for Windows UI Automation, an isolated agent cursor, and window-scoped actions. Optional screenshot understanding is provided by Zhipu GLM.
 

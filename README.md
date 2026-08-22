@@ -1,6 +1,6 @@
 # dsh-computer-use-windows
 
-[English](./README_EN.md)
+[English](./README_EN.md) | [中文](./README.md)
 
 适用于 **Windows** 的 DeepSeek Harness Computer Use 插件。项目基于 [988hj7tczd-oss/dsh-computer-use](https://github.com/988hj7tczd-oss/dsh-computer-use)，使用 [cua-driver](https://github.com/trycua/cua) 提供 UI Automation、独立 Agent 光标和窗口操作，并可选使用智谱 GLM 进行截图视觉识别。
 
