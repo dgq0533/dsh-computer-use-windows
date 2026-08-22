@@ -5,27 +5,45 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 24]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: JS syntax check (node --check)
+          node-version: ${{ matrix.node }}
+      - name: JavaScript syntax check
+        run: node tools/check-syntax.mjs
+      - name: Unit tests
+        run: node --test test/*.test.js
+      - name: PowerShell script parse
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          for f in index.js lib/*.js; do node --check "$f"; done
-
-      - name: Shell syntax check (bash -n)
+          foreach ($file in @('tools/install-windows.ps1', 'tools/uninstall-windows.ps1', 'tools/diagnose-windows.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw "PowerShell parse failed: $file" }
+          }
+      - name: Shell script parse
+        if: runner.os == 'Linux'
         run: |
           bash -n install.sh
           bash -n uninstall.sh
-
-      - name: Theme generator sanity (make_theme.py)
+      - name: Theme generator sanity
+        if: runner.os == 'Linux'
         run: |
           python3 tools/make_theme.py --output /tmp/theme.lottie
           python3 -c "import zipfile,json; z=zipfile.ZipFile('/tmp/theme.lottie'); assert json.loads(z.read('cua/theme.json'))['id']=='com.dsh.computeruse.rainbow'; print('theme OK')"

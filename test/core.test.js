@@ -23,6 +23,15 @@ test('Windows screenshot coordinates are not multiplied by a fixed Retina scale'
   assert.deepEqual(screenPointOf({ x: 150, y: 260 }, {}), { sx: 150, sy: 260 })
 })
 
+test('package exposes the installable Windows bundle', async () => {
+  const fs = await import('node:fs/promises')
+  const pkg = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.equal(pkg.dsh.bundle.patch, 'cordis.patch.yml')
+  assert.equal(pkg.version, '0.2.3')
+  assert.ok(pkg.files.includes('README_EN.md'))
+  assert.ok(pkg.files.includes('tools/'))
+})
+
 test('dangerous labels are detected', () => {
   assert.equal(isDangerousLabel('永久删除'), true)
   assert.equal(isDangerousLabel('保存草稿'), false)
