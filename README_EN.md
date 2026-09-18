@@ -122,6 +122,80 @@ computer_click(element=26)
 - Prefer `mode="ax"` for native Windows applications.
 - Use `mode="vision"` for Canvas, images, or incomplete UIA data.
 
+## Field notes: capability limits (measured 2026-09-19)
+
+Scenario: **open Notepad → type `dsh` → save to the Desktop**, using only this plugin's tools. The outcome was
+verified against the **file itself**, not the UI: `dsh.txt`, 3 bytes, raw bytes `64 73 68`, no BOM, no trailing
+newline, sha256 `55512BF7…A809E`, window title went from `*dsh` to `dsh.txt`.
+
+### 1. Modifier hotkeys are unreliable and can be split apart
+
+- `computer_key("ctrl+s")` delivered **only the `s`** — Ctrl never arrived, so the `s` was inserted as literal
+  text (the document went from `dsh` to `sdsh`).
+- All three key calls returned `{"delivery":{"mode":"background"},"effect":"unverifiable","escalation":{"reason":"delivery_failed","target":"foreground"}}`:
+  after background delivery fails, the driver escalates to foreground delivery on its own.
+- **Plain keys (`backspace`, `return`) do work.**
+- Takeaway: **keep modifier combinations off the critical path** (saving, submitting) and prefer **element clicks**
+  on menus/buttons. When a shortcut looks "swallowed", suspect the modifier first — not the target application.
+
+### 2. `computer_type` uses the accessibility SetValue path, so the insertion point is up to the control
+
+- It returns `{"effect":"confirmed","evidence":[{"kind":"value_readback"}],"route":"accessibility"}` — it **sets the
+  control value and reads it back**, rather than simulating keystrokes one by one.
+- The insertion point therefore does not follow your last click: after this UIA SetValue the caret sat at the
+  **start**, so the stray `s` landed at the **beginning** (`sdsh`) instead of the end.
+- Takeaway: after modifying text, **re-observe and read the value back**; use plain keys (`backspace`, …) for local
+  edits, and never assume the caret is at the end.
+
+### 3. The bottom row of the system **Save As** dialog is **not** in the AX tree
+
+- The driver's tree was **35/35 complete**, yet it contained **neither the file-name box nor the Save button**
+  (only the list view, navigation pane, toolbars, …) → you cannot reach them by `screen_observe` element numbers.
+- Read-only fallback: measure the controls with UI Automation — dialog class `#32770`, file-name box
+  `480,905,1031,19`, `保存(S)` button `1331,1007,88,26` (physical screen pixels).
+- **Clicking Save by coordinates did nothing in practice**: it returned
+  `{"code":"background_unavailable","effect":"unverifiable","path":"ax","uia_status":"unavailable","verified":false}`,
+  and the file was **not** created afterwards. Do not read `点击 完成` as success.
+- **What worked**: click the file-name box to focus it → `computer_key("return")` to fire the default button.
+  That is how this save actually succeeded.
+- To change the target folder: click the navigation pane node `桌面 (已固定)` (the address bar then reads
+  `地址: 桌面`), or click the address bar, type a path and press Enter.
+
+### 4. The 15-second snapshot TTL rejects actions
+
+- Past the TTL an action is refused outright: `✗ 观察快照已过期（超过 15 秒）：请重新调用 screen_observe`
+  (this applies to coordinate clicks and element clicks alike).
+- Multi-step work is therefore `observe → act → observe → act` — **re-observe before every action**. Raise `ttlMs`
+  (see Configuration) when you need a longer window.
+
+### 5. Blind actions carry irreversible risk — measure first
+
+- The Desktop listing contains `DSH.lnk`. Typing a file name "blind" can trigger **type-ahead selection** in the
+  list, and a following Enter may aim the save at that same-named item — the direction of **overwriting user data**.
+- Rules of thumb: (1) click **measured** control positions, never guessed coordinates; (2) confirm the target file
+  **does not exist** before saving (verified here: no `dsh.txt` on the Desktop); (3) rename or ask the user when a
+  name collision exists.
+
+### 6. One convenient side effect
+
+Windows 11 Notepad suggests the **first line of the document** as the file name: after typing `dsh` into an empty
+document, Save As already had `dsh.txt` pre-filled — only the folder needed changing.
+
+### Minimal reproducible sequence (the order that actually worked)
+
+~~~text
+app_launch(name="Notepad", bring_to_front=true)
+screen_observe(window=<pid>)          -> click the text editor element to focus it
+computer_type("dsh", element=<editor>) -> read the value back to confirm
+screen_observe(...)                   -> click the "File" menu item
+screen_observe(...)                   -> click the "Save as" menu item
+screen_observe(...)                   -> click the navigation pane node "Desktop (pinned)"
+   (check: address bar shows "地址: 桌面", file-name box still dsh.txt, target file absent)
+screen_observe(...)                   -> click the file-name box to focus it
+computer_key("return")                -> fire the default button (Save)
+   (verify: file size/bytes and the window title losing its asterisk - not the click return value)
+~~~
+
 ## Optional Zhipu Vision
 
 Set a Zhipu API key through the environment:
