@@ -1,11 +1,17 @@
 {
   "name": "dsh-computer-use",
-  "version": "0.2.3",
+  "version": "0.3.1",
   "description": "适用于 Windows 的 DeepSeek Harness Computer Use 插件（UIA + cua-driver + 可选 GLM 视觉）",
   "type": "module",
   "main": "index.js",
   "license": "MIT",
-  "keywords": ["dsh", "computer-use", "cua-driver", "harness-desktop", "autopilot"],
+  "keywords": [
+    "dsh",
+    "computer-use",
+    "cua-driver",
+    "harness-desktop",
+    "autopilot"
+  ],
   "dsh": {
     "bundle": {
       "patch": "cordis.patch.yml"
@@ -28,8 +34,8 @@
     "diagnose:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/diagnose-windows.ps1"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.6 <0.2.0",
-    "@deepseek-ai/schemastery": "^3.0.0"
+    "@deepseek-ai/dsh-tools": "^0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.0"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-tools": "0.1.0-rc.7",
